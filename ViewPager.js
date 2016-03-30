@@ -39,6 +39,8 @@ var ViewPager = React.createClass({
     locked: PropTypes.bool,
     autoPlay: PropTypes.bool,
     animation: PropTypes.func,
+    hasTouch : PropTypes.func,
+    onTouchEvent : PropTypes.func,  // 'start', 'release'
   },
 
   fling: false,
@@ -82,11 +84,20 @@ var ViewPager = React.createClass({
       }
 
       this.props.hasTouch && this.props.hasTouch(false);
-
+      this.props.onTouchEvent && this.props.onTouchEvent('release');
       this.movePage(step, gestureState);
+      this._restartAutoPlay();
     }
 
     this._panResponder = PanResponder.create({
+      onPanResponderStart: (e, gestureState) => {
+        // The guesture has started. Show visual feedback so the user knows
+        // what is happening!
+        // gestureState.{x,y}0 will be set to zero now
+        this.props.onTouchEvent && this.props.onTouchEvent('start');
+        this._stopAutoPlay();
+      },
+
       // Claim responder if it's a horizontal pan
       onMoveShouldSetPanResponder: (e, gestureState) => {
         if (Math.abs(gestureState.dx) > Math.abs(gestureState.dy)) {
@@ -109,6 +120,9 @@ var ViewPager = React.createClass({
         var offsetX = -dx / this.state.viewWidth + this.childIndex;
         this.state.scrollValue.setValue(offsetX);
       },
+      onStartShouldSetPanResponder: (evt, gestureState) => true,
+      onStartShouldSetPanResponderCapture: (evt, gestureState) => true,
+      onMoveShouldSetPanResponderCapture: (evt, gestureState) => true,
     });
 
     if (this.props.isLoop) {
@@ -127,13 +141,10 @@ var ViewPager = React.createClass({
     if (nextProps.autoPlay) {
       this._startAutoPlay();
     } else {
-      if (this._autoPlayer) {
-        this.clearInterval(this._autoPlayer);
-        this._autoPlayer = null;
-      }
+      this._stopAutoPlay();
     }
 
-    if (nextProps.dataSource) {
+    if (nextProps.dataSource && this.props.dataSource != nextProps.dataSource) {
       var maxPage = nextProps.dataSource.getPageCount() - 1;
       var constrainedPage = Math.max(0, Math.min(this.state.currentPage, maxPage));
       this.setState({
@@ -148,14 +159,25 @@ var ViewPager = React.createClass({
     }
 
   },
-
+  _restartAutoPlay() {
+    if (this.props.autoPlay) {
+      this._startAutoPlay();
+    }
+  },
   _startAutoPlay() {
     if (!this._autoPlayer) {
       this._autoPlayer = this.setInterval(
-        () => {this.movePage(1);},
+        () => { this.movePage(1);},
         5000
       );
     }
+  },
+
+  _stopAutoPlay() {
+    if (this._autoPlayer) {
+        this.clearInterval(this._autoPlayer);
+        this._autoPlayer = null;
+      }
   },
 
   goToPage(pageNumber) {
