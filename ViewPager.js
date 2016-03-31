@@ -61,10 +61,11 @@ var ViewPager = React.createClass({
   },
 
   getInitialState() {
+    var scrollValue = new Animated.Value(0);
     return {
       currentPage: 0,
       viewWidth: 0,
-      scrollValue: new Animated.Value(0)
+      scrollValue: scrollValue
     };
   },
 
@@ -90,21 +91,17 @@ var ViewPager = React.createClass({
     }
 
     this._panResponder = PanResponder.create({
-      onPanResponderStart: (e, gestureState) => {
-        // The guesture has started. Show visual feedback so the user knows
-        // what is happening!
-        // gestureState.{x,y}0 will be set to zero now
-        this.props.onTouchEvent && this.props.onTouchEvent('start');
-        this._stopAutoPlay();
-      },
 
       // Claim responder if it's a horizontal pan
       onMoveShouldSetPanResponder: (e, gestureState) => {
         if (Math.abs(gestureState.dx) > Math.abs(gestureState.dy)) {
-          if (/* (gestureState.moveX <= this.props.edgeHitWidth ||
-              gestureState.moveX >= deviceWidth - this.props.edgeHitWidth) && */
-                this.props.locked !== true && !this.fling) {
+          if (this.props.locked !== true ) {
+            if( this.anim ) {
+              this.state.scrollValue.stopAnimation();
+            }
+
             this.props.hasTouch && this.props.hasTouch(true);
+            this._stopAutoPlay();
             return true;
           }
         }
@@ -120,9 +117,6 @@ var ViewPager = React.createClass({
         var offsetX = -dx / this.state.viewWidth + this.childIndex;
         this.state.scrollValue.setValue(offsetX);
       },
-      onStartShouldSetPanResponder: (evt, gestureState) => true,
-      onStartShouldSetPanResponderCapture: (evt, gestureState) => true,
-      onMoveShouldSetPanResponderCapture: (evt, gestureState) => true,
     });
 
     if (this.props.isLoop) {
@@ -212,18 +206,17 @@ var ViewPager = React.createClass({
       nextChildIdx = 1;
     }
 
-    this.props.animation(this.state.scrollValue, scrollStep, gs)
-      .start((event) => {
-        if (event.finished) {
+    this.anim = this.props.animation(this.state.scrollValue, scrollStep, gs)
+    this.anim.start((event) => {
           this.fling = false;
           this.childIndex = nextChildIdx;
           this.state.scrollValue.setValue(nextChildIdx);
           this.setState({
             currentPage: pageNumber,
           });
-        }
         moved && this.props.onChangePage && this.props.onChangePage(pageNumber);
       });
+    
   },
 
   getCurrentPage() {
