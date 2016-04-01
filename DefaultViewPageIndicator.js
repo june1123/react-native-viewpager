@@ -78,6 +78,7 @@ var DefaultViewPageIndicator = React.createClass({
       inputRange: [0, 1], outputRange: [offsetX, offsetX + itemWidth]
     })
 
+    var newLeft = itemWidth * this.props.activePage;
     var indicators = [];
     for (var i = 0; i < pageCount; i++) {
       indicators.push(this.renderIndicator(i))
@@ -95,10 +96,12 @@ var DefaultViewPageIndicator = React.createClass({
             });
           }}>
         {indicators}
-        <Animated.View style={[styles.curDot, {left}]} />
+        <View style={[styles.curDot, {left:newLeft}]} />
       </View>
     );
   },
 });
+
+//<Animated.View style={[styles.curDot, {left}]} />
 
 module.exports = DefaultViewPageIndicator;

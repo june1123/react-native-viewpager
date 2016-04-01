@@ -40,7 +40,7 @@ var ViewPager = React.createClass({
     autoPlay: PropTypes.bool,
     animation: PropTypes.func,
     hasTouch : PropTypes.func,
-    onTouchEvent : PropTypes.func,  // 'start', 'release'
+    autoPlayInterval : PropTypes.number
   },
 
   fling: false,
@@ -57,6 +57,7 @@ var ViewPager = React.createClass({
             tension: 50,
           })
       },
+      autoPlayInterval : 2500
     }
   },
 
@@ -161,8 +162,10 @@ var ViewPager = React.createClass({
   _startAutoPlay() {
     if (!this._autoPlayer) {
       this._autoPlayer = this.setInterval(
-        () => { this.movePage(1);},
-        5000
+        () => { 
+            this.movePage(1);
+        },
+        this.props.autoPlayInterval
       );
     }
   },
@@ -261,47 +264,61 @@ var ViewPager = React.createClass({
     var bodyComponents = [];
 
     var pagesNum = 0;
-    var hasLeft = false;
     var viewWidth = this.state.viewWidth;
 
     if(pageIDs.length > 0 && viewWidth > 0) {
-      // left page
-      if (this.state.currentPage > 0) {
-        bodyComponents.push(this._getPage(this.state.currentPage - 1));
+      if( pageIDs.length == 1) {
+        bodyComponents.push(this._getPage(this.state.currentPage));
         pagesNum++;
-        hasLeft = true;
-      } else if (this.state.currentPage == 0 && this.props.isLoop) {
-        bodyComponents.push(this._getPage(pageIDs.length - 1, true));
-        pagesNum++;
-        hasLeft = true;
-      }
+      } else {
+        // left page
+        if (this.state.currentPage > 0) {
+          bodyComponents.push(this._getPage(this.state.currentPage - 1));
+          pagesNum++;
+        } else if (this.state.currentPage == 0 && this.props.isLoop) {
+          bodyComponents.push(this._getPage(pageIDs.length - 1, true));
+          pagesNum++;
+        }
 
-      // center page
-      bodyComponents.push(this._getPage(this.state.currentPage));
-      pagesNum++;
+        // center page
+        bodyComponents.push(this._getPage(this.state.currentPage));
+        pagesNum++;
 
-      // right page
-      if (this.state.currentPage < pageIDs.length - 1) {
-        bodyComponents.push(this._getPage(this.state.currentPage + 1));
-        pagesNum++;
-      } else if (this.state.currentPage == pageIDs.length - 1 && this.props.isLoop) {
-        bodyComponents.push(this._getPage(0, true));
-        pagesNum++;
+        // right page
+        if (this.state.currentPage < pageIDs.length - 1) {
+          bodyComponents.push(this._getPage(this.state.currentPage + 1));
+          pagesNum++;
+        } else if (this.state.currentPage == pageIDs.length - 1 && this.props.isLoop) {
+          bodyComponents.push(this._getPage(0, true));
+          pagesNum++;
+        }
       }
     }
-
+    
     var sceneContainerStyle = {
       width: viewWidth * pagesNum,
       flex: 1,
       flexDirection: 'row'
     };
 
-    // this.childIndex = hasLeft ? 1 : 0;
     // this.state.scrollValue.setValue(this.childIndex);
     var translateX = this.state.scrollValue.interpolate({
       inputRange: [0, 1], outputRange: [0, -viewWidth]
     });
 
+    var animatedView = undefined;
+    if(pageIDs.length == 1 ) {
+      animatedView = ( 
+        <Animated.View style={sceneContainerStyle}>
+          {bodyComponents}
+        </Animated.View> );
+    } else {
+      animatedView = (
+        <Animated.View style={[sceneContainerStyle, {transform: [{translateX}]}]}
+          {...this._panResponder.panHandlers} >
+          {bodyComponents}
+        </Animated.View>);
+    }
     return (
       <View style={{flex: 1}}
         onLayout={(event) => {
@@ -316,11 +333,7 @@ var ViewPager = React.createClass({
             });
           }}
         >
-
-        <Animated.View style={[sceneContainerStyle, {transform: [{translateX}]}]}
-          {...this._panResponder.panHandlers}>
-          {bodyComponents}
-        </Animated.View>
+        {animatedView}
 
         {this.renderPageIndicator({goToPage: this.goToPage,
                             pageCount: pageIDs.length,
